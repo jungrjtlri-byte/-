@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fff7e8">
+<title>점심 뭐 먹지?</title>
+<style>
+:root{color-scheme:light;--cream:#fff7e8;--ink:#30291f;--orange:#f0783c;--muted:#81796d}
+*{box-sizing:border-box}
+body{margin:0;min-height:100svh;background:var(--cream);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;display:flex;justify-content:center}
+main{width:min(100%,520px);min-height:100svh;padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;text-align:center}
+h1{font-size:clamp(28px,8vw,40px);line-height:1.2;margin:12px 0 8px;letter-spacing:-.06em}
+.sub{margin:0;color:var(--muted);font-size:15px}
+.card{width:100%;min-height:310px;margin:30px 0 24px;border:2px solid #f2e5d0;border-radius:32px;background:#fffdf8;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px;box-shadow:0 12px 32px #69421a0d}
+.emoji{font-size:clamp(88px,28vw,142px);line-height:1.15;filter:drop-shadow(0 7px 5px #00000010);transition:transform .15s}
+.name{font-size:clamp(34px,10vw,56px);font-weight:900;letter-spacing:-.07em;line-height:1.15;overflow-wrap:anywhere;margin-top:12px}
+.hint{font-size:14px;color:var(--muted);margin-top:12px}
+.buttons{width:100%;display:grid;gap:12px}
+button{font:inherit;border:0;border-radius:18px;min-height:60px;font-weight:800;font-size:18px;cursor:pointer;touch-action:manipulation}
+.primary{background:var(--orange);color:white;box-shadow:0 6px 0 #ce5d2d}
+.secondary{background:#f1e7d7;color:var(--ink)}
+button:active{transform:translateY(2px)}
+.status{min-height:22px;margin:17px 0 0;color:var(--muted);font-size:13px}
+.card.rolling .emoji{animation:bounce .2s infinite alternate}
+@keyframes bounce{to{transform:rotate(8deg) scale(1.08)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<main>
+<h1>점심 뭐 먹지?</h1>
+<p class="sub">폰을 흔들거나 버튼을 눌러 골라보세요 🍽️</p>
+<section class="card" id="card" aria-live="polite" aria-atomic="true">
+<div class="emoji" id="emoji">🍴</div>
+<div class="name" id="name">오늘의 점심</div>
+<div class="hint" id="hint">메뉴를 뽑아볼까요?</div>
+</section>
+<div class="buttons">
+<button class="primary" id="start">시작하기</button>
+<button class="secondary" id="draw">버튼으로 뽑기</button>
+</div>
+<p class="status" id="status" role="status">시작하기를 누르면 흔들기 센서를 켭니다.</p>
+</main>
+<script>
+const menus = [
+  ["🍚","김치볶음밥"],["🍜","잔치국수"],["🍲","김치찌개"],["🥘","된장찌개"],["🍱","제육덮밥"],
+  ["🍛","카레라이스"],["🍜","냉면"],["🥟","만두국"],["🍗","치킨마요덮밥"],["🍖","불고기덮밥"],
+  ["🍜","칼국수"],["🍝","비빔국수"],["🍲","순두부찌개"],["🍚","비빔밥"],["🥩","삼겹살"],
+  ["🍜","짬뽕"],["🍜","짜장면"],["🍤","돈가스"],["🍣","초밥"],["🍔","햄버거"],
+  ["🌯","김밥"],["🍜","라면"],["🍗","닭갈비"],["🍲","부대찌개"],["🥗","샐러드"],
+  ["🍝","파스타"],["🐟","생선구이 정식"],["🍚","오므라이스"],["🥓","보쌈 정식"],["🥘","쭈꾸미볶음"]
+];
+const emojiEl=document.getElementById("emoji"), nameEl=document.getElementById("name");
+const hintEl=document.getElementById("hint"), card=document.getElementById("card");
+const statusEl=document.getElementById("status");
+let lastIndex=-1, rolling=false, lastShake=0, permissionGranted=false;
+function vibrate(pattern){try{if(typeof navigator.vibrate==="function")navigator.vibrate(pattern)}catch(_){}}
+function chooseIndex(){
+  if(menus.length<2)return 0;
+  let n=Math.floor(Math.random()*menus.length);
+  if(n===lastIndex)n=(n+1+Math.floor(Math.random()*(menus.length-1)))%menus.length;
+  return n;
+}
+function draw(){
+  if(rolling)return;
+  rolling=true; card.classList.add("rolling"); hintEl.textContent="두근두근…"; statusEl.textContent="오늘의 메뉴를 고르는 중!";
+  vibrate(25);
+  const winner=chooseIndex(), start=performance.now(), duration=1650;
+  function tick(now){
+    const progress=Math.min((now-start)/duration,1);
+    const randomIndex=Math.floor(Math.random()*menus.length);
+    const shown=progress>=1?winner:randomIndex;
+    emojiEl.textContent=menus[shown][0]; nameEl.textContent=menus[shown][1];
+    if(progress<1){
+      const delay=35+Math.pow(progress,2)*180;
+      setTimeout(()=>requestAnimationFrame(tick),delay);
+    }else{
+      lastIndex=winner; rolling=false; card.classList.remove("rolling");
+      hintEl.textContent="오늘 점심은 이걸로 결정!"; statusEl.textContent="맛있는 점심 드세요 😋"; vibrate([70,45,100]);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+document.getElementById("draw").addEventListener("click",draw);
+document.getElementById("start").addEventListener("click",async()=>{
+  const button=document.getElementById("start");
+  if(typeof DeviceMotionEvent==="undefined"){statusEl.textContent="이 기기에서는 흔들기 센서를 사용할 수 없어요. 버튼으로 뽑아주세요.";button.textContent="센서 사용 불가";return}
+  try{
+    if(typeof DeviceMotionEvent.requestPermission==="function"){
+      const result=await DeviceMotionEvent.requestPermission();
+      if(result!=="granted"){statusEl.textContent="센서 권한이 허용되지 않았어요. 버튼으로 뽑아주세요.";return}
+    }
+    permissionGranted=true;
+    window.addEventListener("devicemotion",onMotion);
+    button.textContent="흔들기 준비 완료";
+    statusEl.textContent="폰을 흔들면 메뉴를 뽑아요!";
+  }catch(_){statusEl.textContent="센서를 켤 수 없어요. 버튼으로 뽑아주세요."}
+});
+function onMotion(event){
+  if(!permissionGranted||rolling)return;
+  const a=event.accelerationIncludingGravity;
+  if(!a)return;
+  const strength=Math.abs(a.x||0)+Math.abs(a.y||0)+Math.abs(a.z||0);
+  const now=Date.now();
+  if(strength>28&&now-lastShake>1100){lastShake=now;vibrate(35);draw()}
+}
+</script>
+</body>
+</html>
